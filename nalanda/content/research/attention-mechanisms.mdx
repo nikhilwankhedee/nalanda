@@ -1,0 +1,68 @@
+---
+title: "Attention Mechanisms in Transformers"
+excerpt: "Research notes on how attention mechanisms work in transformer models"
+date: "2024-01-18"
+tags: ["machine-learning", "transformers", "deep-learning"]
+type: "research"
+---
+
+# Attention Mechanisms in Transformers
+
+Research notes on the attention mechanism that powers modern language models.
+
+## Background
+
+The attention mechanism was introduced in the paper "Attention Is All You Need" (Vaswani et al., 2017). It allows models to weigh the importance of different parts of the input when processing each element.
+
+## Key Concepts
+
+### Query, Key, Value
+
+Attention works by computing three vectors for each input:
+
+- **Query (Q)**: What am I looking for?
+- **Key (K)**: What do I contain?
+- **Value (V)**: What information do I carry?
+
+### Scaled Dot-Product Attention
+
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+$$
+
+The scaling factor $\sqrt{d_k}$ prevents dot products from growing too large.
+
+## Multi-Head Attention
+
+Instead of single attention, transformers use multiple "heads" that learn different attention patterns:
+
+```python
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads):
+        super().__init__()
+        self.num_heads = num_heads
+        self.d_head = d_model // num_heads
+        
+        self.q_proj = nn.Linear(d_model, d_model)
+        self.k_proj = nn.Linear(d_model, d_model)
+        self.v_proj = nn.Linear(d_model, d_model)
+        self.out_proj = nn.Linear(d_model, d_model)
+```
+
+## Applications
+
+- [[Natural Language Processing]]: Translation, summarization, QA
+- [[Computer Vision]]: Vision transformers (ViT)
+- [[Speech Recognition]]: Audio transformers
+
+## Questions to Explore
+
+1. How does attention relate to human attention?
+2. What are the computational limitations?
+3. How do sparse attention patterns improve efficiency?
+
+## References
+
+- Vaswani et al. (2017). "Attention Is All You Need"
+- [[Transformer Architecture]]
+- [[BERT]]

@@ -1,0 +1,241 @@
+// Prisma schema for Nalanda v1
+// Knowledge engine for living blogs and idea graphs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Core User model
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // For credentials auth
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  posts         Post[]
+  bookmarks     Bookmark[]
+  readingHistory ReadingHistory[]
+  followedConcepts FollowedConcept[]
+}
+
+// Post model - supports posts, ideas, research notes
+model Post {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  content     String   @db.Text
+  excerpt     String?
+  type        PostType @default(POST)
+  status      PostStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  tags        PostTag[]
+  concepts    PostConcept[]
+  bookmarks   Bookmark[]
+  readingHistory ReadingHistory[]
+  backlinks   Backlink[] @relation("targetPost")
+  references  Backlink[] @relation("sourcePost")
+  conceptReferences ConceptBacklink[]
+
+  @@index([slug])
+  @@index([type])
+  @@index([status])
+  @@index([authorId])
+}
+
+enum PostType {
+  POST
+  IDEA
+  RESEARCH
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Tag model
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  posts     PostTag[]
+
+  @@index([slug])
+}
+
+model PostTag {
+  id        String   @id @default(cuid())
+  postId    String
+  tagId     String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+  @@index([postId])
+  @@index([tagId])
+}
+
+// Concept model - represents knowledge nodes
+model Concept {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  content     String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  posts       PostConcept[]
+  bookmarks   Bookmark[]
+  followers   FollowedConcept[]
+  backlinks   ConceptBacklink[] @relation("targetConcept")
+
+  @@index([slug])
+}
+
+model PostConcept {
+  id        String   @id @default(cuid())
+  postId    String
+  conceptId String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, conceptId])
+  @@index([postId])
+  @@index([conceptId])
+}
+
+// Bookmark model
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String?
+  conceptId String?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  concept   Concept? @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, conceptId])
+  @@index([userId])
+}
+
+// Reading history model
+model ReadingHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  progress  Int      @default(0) // Percentage read
+  lastReadAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+// Followed concepts
+model FollowedConcept {
+  id        String   @id @default(cuid())
+  userId    String
+  conceptId String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conceptId])
+  @@index([userId])
+  @@index([conceptId])
+}
+
+// Backlink model - tracks references between posts
+model Backlink {
+  id           String   @id @default(cuid())
+  sourcePostId String
+  targetPostId String
+  createdAt    DateTime @default(now())
+  
+  sourcePost   Post     @relation("sourcePost", fields: [sourcePostId], references: [id], onDelete: Cascade)
+  targetPost   Post     @relation("targetPost", fields: [targetPostId], references: [id], onDelete: Cascade)
+
+  @@unique([sourcePostId, targetPostId])
+  @@index([sourcePostId])
+  @@index([targetPostId])
+}
+
+// Concept backlink model - tracks references to concepts
+model ConceptBacklink {
+  id           String   @id @default(cuid())
+  sourcePostId String
+  targetConceptId String
+  createdAt    DateTime @default(now())
+  
+  sourcePost    Post      @relation(fields: [sourcePostId], references: [id], onDelete: Cascade)
+  targetConcept Concept   @relation("targetConcept", fields: [targetConceptId], references: [id], onDelete: Cascade)
+
+  @@unique([sourcePostId, targetConceptId])
+  @@index([sourcePostId])
+  @@index([targetConceptId])
+}
