@@ -57,6 +57,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?   // For credentials auth
+  role          String    @default("USER")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -66,6 +67,7 @@ model User {
   bookmarks     Bookmark[]
   readingHistory ReadingHistory[]
   followedConcepts FollowedConcept[]
+  knowledgeEvents KnowledgeEvent[]
 }
 
 // Post model - supports posts, ideas, research notes
@@ -89,6 +91,7 @@ model Post {
   backlinks   Backlink[] @relation("targetPost")
   references  Backlink[] @relation("sourcePost")
   conceptReferences ConceptBacklink[]
+  knowledgeEvents KnowledgeEvent[]
 
   @@index([slug])
   @@index([type])
@@ -140,11 +143,12 @@ model Concept {
   content     String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   posts       PostConcept[]
   bookmarks   Bookmark[]
   followers   FollowedConcept[]
   backlinks   ConceptBacklink[] @relation("targetConcept")
+  knowledgeEvents KnowledgeEvent[]
 
   @@index([slug])
 }
@@ -238,4 +242,43 @@ model ConceptBacklink {
   @@unique([sourcePostId, targetConceptId])
   @@index([sourcePostId])
   @@index([targetConceptId])
+}
+
+// Analytics models - Visitor tracking
+model VisitorEvent {
+  id        String   @id @default(cuid())
+  visitorId String
+  page      String
+  country   String?
+  device    String?
+  event     String
+  value     Float?
+  createdAt DateTime @default(now())
+
+  @@index([visitorId])
+  @@index([event])
+  @@index([createdAt])
+  @@index([page])
+}
+
+// Analytics models - Knowledge activity tracking
+model KnowledgeEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  visitorId String
+  postId    String?
+  conceptId String?
+  event     String
+  createdAt DateTime @default(now())
+
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  post      Post?     @relation(fields: [postId], references: [id], onDelete: SetNull)
+  concept   Concept?  @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([visitorId])
+  @@index([event])
+  @@index([postId])
+  @@index([conceptId])
+  @@index([createdAt])
 }

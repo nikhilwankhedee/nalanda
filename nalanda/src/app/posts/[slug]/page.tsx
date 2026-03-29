@@ -5,6 +5,7 @@ import prisma from '@/lib/database';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import { processBacklinks } from '@/lib/backlinks';
+import ReadingTimeTracker from '@/components/analytics/ReadingTimeTracker';
 
 interface PostPageProps {
   params: { slug: string };
@@ -12,7 +13,7 @@ interface PostPageProps {
 
 export default async function PostPage({ params }: PostPageProps) {
   const session = await getServerSession(authOptions);
-  
+
   const post = await prisma.post.findUnique({
     where: { slug: params.slug, status: 'PUBLISHED' },
     include: {
@@ -60,6 +61,9 @@ export default async function PostPage({ params }: PostPageProps) {
 
   return (
     <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Analytics Tracker */}
+      <ReadingTimeTracker postId={post.id} />
+
       {/* Header */}
       <header className="mb-8">
         <div className="flex items-center gap-2 mb-4">

@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/database';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
+import FollowButton from '@/components/FollowButton';
+import ConceptTracker from '@/components/analytics/ConceptTracker';
 
 interface ConceptPageProps {
   params: { slug: string };
@@ -41,23 +43,18 @@ export default async function ConceptPage({ params }: ConceptPageProps) {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Analytics Tracker */}
+      <ConceptTracker conceptId={concept.id} />
+
       {/* Header */}
       <header className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-600 font-medium">
             Concept
           </span>
-          {session?.user && (
-            <button
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                isFollowing
-                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  : 'bg-primary-600 text-white hover:bg-primary-700'
-              }`}
-            >
-              {isFollowing ? 'Following' : 'Follow'}
-            </button>
-          )}
+          {session?.user && concept.id ? (
+            <FollowButton conceptId={concept.id} isFollowing={isFollowing} />
+          ) : null}
         </div>
         <h1 className="text-4xl font-bold text-gray-900 mb-4">{concept.name}</h1>
         {concept.description && (
